@@ -1,0 +1,177 @@
+<!doctype HTML>
+<html>
+
+<head>
+  <title>Home</title>
+
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+    }
+
+    body {
+      padding: 10px;
+    }
+
+    ol {
+      list-style: none;
+      padding-left: 10px;
+    }
+
+    ol li:not(:last-child) {
+      margin-bottom: 10px;
+    }
+
+    summary button {
+      margin-left: 10px;
+    }
+
+    summary {
+      cursor: pointer;
+    }
+
+    main {
+      display: flex;
+      justify-content: flex-start;
+      align-items: flex-start;
+    }
+
+    main>div:not(.vr) {
+      flex: 1;
+    }
+
+    main>div.vr {
+      flex: 0;
+      margin-right: 50px;
+      margin-left: 50px;
+      height: 500px;
+      border-left: thin solid black;
+      align-self: stretch;
+    }
+
+    @media (max-width: 1000px) {
+      main {
+        flex-direction: column;
+      }
+    }
+
+    code {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    textarea {
+      height: 250px;
+      resize: vertical;
+    }
+
+    #writeFileArea {
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #writeFileName {
+      max-width: 200px;
+    }
+
+    button {
+      max-width: 100px;
+    }
+  </style>
+
+  <script>
+    const getPages = () => {
+      return fetch("/api/getPages").then(res => res.json()).then(data => data)
+    }
+
+    const postPage = (filename, contents) => {
+      return fetch("/api/postPage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename, contents }) }).then((res) => res.json())
+    }
+
+    const setPages = async () => {
+      const pages = await getPages();
+      const pageOL = document.querySelector(".pages");
+      pageOL.innerHTML = ""
+
+      pages.forEach((page) => {
+        const li = document.createElement("li");
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+
+        summary.innerText = page.filename;
+
+        const linkButton = document.createElement("button");
+        linkButton.innerHTML = "&#128279;";
+        linkButton.addEventListener("click", () => {
+          window.location.href = `/pages/${page.filename}`;
+        });
+
+        summary.appendChild(linkButton);
+
+        const contents = document.createElement("code");
+        contents.innerText = JSON.stringify(page.contents);
+
+        details.appendChild(summary);
+        details.appendChild(contents);
+        li.appendChild(details);
+        pageOL.appendChild(li);
+      })
+    }
+
+    const writePageSubmit = async () => {
+      const filename = document.getElementById("writeFileName");
+      const contents = document.getElementById("writeFileContents");
+
+      const res = await postPage(filename.value, contents.value);
+
+      alert(JSON.stringify(res))
+      filename.value = "";
+      contents.value = "";
+    }
+
+    const shutDown = async () => {
+      const status = await fetch('/shutdown').then((res) =>  res.text())
+      alert(status)
+    }
+  </script>
+</head>
+
+<body>
+  <h1>NetFun Web Server Home</h1>
+  <main>
+    <div>
+      <h3>Controls</h3>
+      <button onclick="shutDown()">Shut down</button>
+      <button onclick="setPages()">Get pages</button>
+      <h3>Pages</h3>
+      <ol class="pages"></ol>
+    </div>
+    <div class="vr"></div>
+    <div>
+      <h3>Write File To pages/</h3>
+      <form>
+        <div id="writeFileArea">
+          <label>File Name</label>
+          <input type="text" id="writeFileName">
+          <label>File Contents</label>
+          <textarea id="writeFileContents">
+
+          </textarea>
+          <button type="button" onclick="writePageSubmit(event)">Write</button>
+        </div>
+      </form>
+    </div>
+  </main>
+</body>
+
+</html>
