@@ -38,9 +38,7 @@ def build_http_response(body: list[str] | str, *headers: str) -> bytes:
     return req.encode()
 
 
-def handle_request(
-    conn: s.socket, addr: str
-) -> RequestResult | tuple[RequestResult, str, str]:
+def handle_request(conn: s.socket, addr: str) -> RequestResult:
     print(f"Connection from {addr}")
 
     try:
@@ -54,10 +52,17 @@ def handle_request(
             filename = "pages/server.html"
 
         if filename.split("/")[-1] == "shutdown":
+            conn.send(
+                build_http_response(
+                    json.dumps({"status": APIResponseStatus.SUCCESS.value}), STATUS_200
+                )
+            )
             return RequestResult.SHUTDOWN
 
         if filename.startswith("api/"):
-            return (RequestResult.API_REQUEST, filename, message)
+            args = handle_api_request(filename, message)
+            conn.send(build_http_response(*args))
+            return RequestResult.API_REQUEST
 
         with open(filename, encoding="utf-8") as f:
             lines = f.readlines()
@@ -118,8 +123,7 @@ def handle_api_request(route: str, message: str) -> tuple[str, str] | tuple[str,
 def init_server(sock: s.socket) -> None:
     while True:
         conn, addr = sock.accept()
-        request = handle_request(conn, addr)
-        result = request if not isinstance(request, tuple) else request[0]
+        result = handle_request(conn, addr)
 
         match result:
             case RequestResult.SUCCESS:
@@ -127,14 +131,8 @@ def init_server(sock: s.socket) -> None:
             case RequestResult.FAILURE:
                 print(f"Failed to handle request of {addr}")
             case RequestResult.API_REQUEST:
-                assert isinstance(request, tuple)
-                args = handle_api_request(request[1], request[2])
-                conn.send(build_http_response(*args))
                 print(f"Handled API request of {addr}")
             case RequestResult.SHUTDOWN:
-                conn.send(
-                    build_http_response(json.dumps({"status": "success"}), STATUS_200)
-                )
                 print(f"{addr} requested to shut down server, shutting down...")
                 break
 

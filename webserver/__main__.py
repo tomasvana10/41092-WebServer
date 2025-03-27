@@ -1,4 +1,4 @@
-import socket as s 
+import socket as s
 import sys
 
 from .server import init_server
